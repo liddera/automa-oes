@@ -19,25 +19,23 @@ jobs:
       # 3️⃣ Instalar dependências e Playwright
       - name: Instalar dependências
         run: |
-          echo "🔹 Atualizando pip e instalando requirements..."
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          echo "🔹 Instalando browsers do Playwright..."
           playwright install --with-deps
 
-      # 4️⃣ Copiar Chromium do cache do Playwright para a pasta do projeto
+      # 4️⃣ Copiar Chromium completo do cache do Playwright
       - name: Preparar Chromium para PyInstaller
         run: |
           echo "🔹 Criando pasta do Chromium..."
           mkdir -p automacoes\playwright_browsers\chrome-win32
-          echo "🔹 Copiando chrome.exe do cache do Playwright..."
-          copy "%LOCALAPPDATA%\ms-playwright\chromium-1208\chrome-win32\chrome.exe" automacoes\playwright_browsers\chrome-win32\
+          echo "🔹 Copiando arquivos do Chromium..."
+          xcopy /E /I /Y "%LOCALAPPDATA%\ms-playwright\chromium-1208\chrome-win32" automacoes\playwright_browsers\chrome-win32\
           echo "✅ Chromium preparado com sucesso."
 
       # 5️⃣ Gerar EXE com PyInstaller
       - name: Gerar EXE
         run: |
-          echo "🔹 Gerando EXE com PyInstaller..."
+          echo "🔹 Rodando PyInstaller..."
           pyinstaller --onefile --log-level=DEBUG automacoes/main.py
           echo "✅ Build do EXE concluído."
 
