@@ -16,7 +16,7 @@ USER_DATA_DIR = base_path / "perfil_whatsapp"
 USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # 🔹 Número e mensagem
-numero = "556993758751"
+numero = "556996041447"
 mensagem = "Teste automático 🚀"
 
 # 🔹 Função para adicionar texto no painel
