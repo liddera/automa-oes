@@ -1,15 +1,13 @@
-import tkinter as tk
-from tkinter import scrolledtext, messagebox
+import sys
+import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
-import time
-import sys
 
-# 🔹 Caminho base para PyInstaller compatível
+# 🔹 Caminho base: funciona no Python normal e no PyInstaller
 if getattr(sys, 'frozen', False):
-    base_path = Path(sys._MEIPASS)
+    base_path = Path(sys._MEIPASS)  # executável
 else:
-    base_path = Path(__file__).parent
+    base_path = Path(__file__).parent  # Python normal
 
 # 🔹 Pasta do perfil do WhatsApp
 USER_DATA_DIR = base_path / "perfil_whatsapp"
@@ -19,60 +17,50 @@ USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
 numero = "556996041447"
 mensagem = "Teste automático 🚀"
 
-# 🔹 Função para adicionar texto no painel
-def log(text):
-    txt_log.configure(state='normal')
-    txt_log.insert(tk.END, text + "\n")
-    txt_log.see(tk.END)
-    txt_log.configure(state='disabled')
-    root.update()
+# 🔹 Caminho do Chromium para cada SO
+import platform
+so = platform.system().lower()
+if so == "linux":
+    CHROMIUM_EXECUTABLE = str(base_path / "playwright_browsers/chrome-linux64/chrome")
+elif so == "windows":
+    CHROMIUM_EXECUTABLE = str(base_path / "playwright_browsers/chrome-win32/chrome.exe")
+elif so == "darwin":  # macOS
+    CHROMIUM_EXECUTABLE = str(base_path / "playwright_browsers/chrome-mac/Chromium.app/Contents/MacOS/Chromium")
+else:
+    raise Exception(f"SO não suportado: {so}")
 
-# 🔹 Função que executa os passos do WhatsApp
+# 🔹 Função principal
 def enviar_mensagem():
-    try:
-        log("🚀 Abrindo navegador com Playwright...")
-        with sync_playwright() as p:
-            context = p.chromium.launch_persistent_context(
-                user_data_dir=str(USER_DATA_DIR),
-                headless=False
-            )
-            page = context.new_page()
+    print("🚀 Abrindo navegador com Playwright...")
+    with sync_playwright() as p:
+        context = p.chromium.launch_persistent_context(
+            user_data_dir=str(USER_DATA_DIR),
+            headless=False,
+            executable_path=CHROMIUM_EXECUTABLE
+        )
+        page = context.new_page()
 
-            log("🔹 Carregando WhatsApp Web...")
-            page.goto("https://web.whatsapp.com/")
-            page.wait_for_selector("div#app", timeout=0)
-            log("✅ WhatsApp carregado!")
+        print("🔹 Carregando WhatsApp Web...")
+        page.goto("https://web.whatsapp.com/")
+        page.wait_for_selector("div#app", timeout=0)
+        print("✅ WhatsApp carregado!")
 
-            log(f"🔹 Abrindo conversa do número {numero}...")
-            page.goto(f"https://web.whatsapp.com/send?phone={numero}")
-            caixa_mensagem = page.locator("footer div[contenteditable='true']").first
-            caixa_mensagem.wait_for(timeout=0)
+        print(f"🔹 Abrindo conversa do número {numero}...")
+        page.goto(f"https://web.whatsapp.com/send?phone={numero}")
+        caixa = page.locator("footer div[contenteditable='true']").first
+        caixa.wait_for(timeout=0)
 
-            log("🔹 Preparando mensagem...")
-            caixa_mensagem.click()
-            caixa_mensagem.type(mensagem, delay=50)
+        print("🔹 Digitando mensagem...")
+        caixa.click()
+        caixa.type(mensagem, delay=50)
 
-            log("🔹 Enviando mensagem...")
-            page.keyboard.press("Enter")
-            log("📩 Mensagem enviada com sucesso!")
+        print("🔹 Enviando mensagem...")
+        page.keyboard.press("Enter")
+        print("📩 Mensagem enviada!")
 
-            time.sleep(3)
-            log("✅ Processo concluído.")
+        time.sleep(3)
+        print("✅ Processo concluído.")
 
-    except Exception as e:
-        messagebox.showerror("Erro", str(e))
-        log(f"❌ Erro: {e}")
-
-# 🔹 Interface Tkinter
-root = tk.Tk()
-root.title("Painel WhatsApp Automático")
-root.geometry("500x400")
-
-tk.Label(root, text="Painel de execução do WhatsApp", font=("Arial", 14)).pack(pady=10)
-
-txt_log = scrolledtext.ScrolledText(root, state='disabled', width=60, height=20)
-txt_log.pack(padx=10, pady=10)
-
-tk.Button(root, text="Executar Passos", command=enviar_mensagem).pack(pady=10)
-
-root.mainloop()
+# 🔹 Executa
+if __name__ == "__main__":
+    enviar_mensagem()

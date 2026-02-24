@@ -8,23 +8,43 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # 1️⃣ Puxar o código do repositório
       - uses: actions/checkout@v4
 
+      # 2️⃣ Configurar Python
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # 3️⃣ Instalar dependências e Playwright
       - name: Instalar dependências
         run: |
+          echo "🔹 Atualizando pip e instalando requirements..."
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
+          echo "🔹 Instalando browsers do Playwright..."
           playwright install --with-deps
 
+      # 4️⃣ Copiar Chromium do cache do Playwright para a pasta do projeto
+      - name: Preparar Chromium para PyInstaller
+        run: |
+          echo "🔹 Criando pasta do Chromium..."
+          mkdir -p automacoes\playwright_browsers\chrome-win32
+          echo "🔹 Copiando chrome.exe do cache do Playwright..."
+          copy "%LOCALAPPDATA%\ms-playwright\chromium-1208\chrome-win32\chrome.exe" automacoes\playwright_browsers\chrome-win32\
+          echo "✅ Chromium preparado com sucesso."
+
+      # 5️⃣ Gerar EXE com PyInstaller
       - name: Gerar EXE
         run: |
-          pyinstaller --onefile automacoes/main.py
+          echo "🔹 Gerando EXE com PyInstaller..."
+          pyinstaller --onefile --log-level=DEBUG automacoes/main.py
+          echo "✅ Build do EXE concluído."
 
+      # 6️⃣ Upload do EXE gerado como artefato
       - name: Upload artefato
         uses: actions/upload-artifact@v4
         with:
           name: automacao-windows
           path: dist/*.exe
+          retention-days: 7
