@@ -3,4 +3,5 @@ __pycache__/
 dist/
 build/
 perfil_whatsapp/
+playwright_browsers/
 *.pyc
