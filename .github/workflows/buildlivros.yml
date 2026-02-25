@@ -1,0 +1,40 @@
+name: Build BaixaLivros EXE (Windows)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'  # ou 3.12
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright pyinstaller
+          $env:PLAYWRIGHT_BROWSERS_PATH = "0"
+          playwright install chromium
+
+      - name: Build EXE
+        run: |
+          pyinstaller --onefile ^
+            --windowed ^
+            --name "BaixaLivros" ^
+            --add-data "$env:LOCALAPPDATA\ms-playwright;playwright\driver\package\.local-browsers" ^
+            --hidden-import=playwright ^
+            --hidden-import=playwright.sync_api ^
+            --hidden-import=playwright._impl ^
+            --collect-all playwright ^
+            --collect-all tkinter ^
+            automacoes/bucarlivros.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BaixaLivros-Windows
+          path: dist/BaixaLivros.exe
