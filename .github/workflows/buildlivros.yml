@@ -18,27 +18,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install playwright pyinstaller
 
-      - name: Force install Chromium inside package dir
+      - name: Install Chromium bundled
         run: |
-          # Define PLAYWRIGHT_BROWSERS_PATH to 0 and install
           $env:PLAYWRIGHT_BROWSERS_PATH = "0"
           playwright install chromium
-          # Debug: show where browsers were installed
-          Get-ChildItem -Path $env:PLAYWRIGHT_BROWSERS_PATH -Recurse -Directory | Where-Object {$_.Name -like "chromium-*"} | Select-Object FullName
+          # Debug (opcional, pode remover depois)
+          Get-ChildItem -Path "C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages\playwright\driver\package\.local-browsers" -Recurse -Directory | Where-Object {$_.Name -like "chromium-*"} | Select-Object FullName
 
       - name: Build EXE
         run: |
-          # Use the exact relative path from playwright package (works when PLAYWRIGHT_BROWSERS_PATH=0)
           pyinstaller --onefile `
             --windowed `
             --name "BaixaLivros" `
-            --add-data ".\venv\Lib\site-packages\playwright\driver\package\.local-browsers;playwright\driver\package\.local-browsers" `
+            --add-data "C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages\playwright\driver\package\.local-browsers;playwright\driver\package\.local-browsers" `
             --hidden-import playwright `
             --hidden-import playwright.sync_api `
             --hidden-import playwright._impl `
             --collect-all playwright `
             --collect-all tkinter `
-            automacoes/bucarlivros.py   # Ajuste se o arquivo for main.py
+            automacoes/bucarlivros.py   # mude para main.py se for esse o arquivo
 
       - uses: actions/upload-artifact@v4
         with:
