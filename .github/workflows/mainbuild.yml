@@ -1,4 +1,4 @@
-name: Build BaixaLivros EXE (Windows)
+name: SicoobNet Session Automation 
 
 on:
   workflow_dispatch:
