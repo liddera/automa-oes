@@ -1,66 +1,79 @@
 import sys
 import time
 from pathlib import Path
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 
-# 🔹 Caminho base: funciona no Python normal e no PyInstaller
-if getattr(sys, 'frozen', False):
-    base_path = Path(sys._MEIPASS)  # executável
-else:
-    base_path = Path(__file__).parent  # Python normal
-
-# 🔹 Pasta do perfil do WhatsApp
-USER_DATA_DIR = base_path / "perfil_whatsapp"
+# Pasta persistente completa
+base_path = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__file__).parent
+USER_DATA_DIR = base_path / "perfil_sicoobnet_persistente"
 USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# 🔹 Número e mensagem
-numero = "556996041447"
-mensagem = "Teste automático 🚀"
+EXTENSION_PATH = None 
+HEADLESS = False
+PAUSA_APOS_LOGIN = 180 
 
-# 🔹 Caminho do Chromium para cada SO
-import platform
-so = platform.system().lower()
-if so == "linux":
-    CHROMIUM_EXECUTABLE = str(base_path / "playwright_browsers/chrome-linux64/chrome")
-elif so == "windows":
-    CHROMIUM_EXECUTABLE = str(base_path / "playwright_browsers/chrome-win32/chrome.exe")
-elif so == "darwin":  # macOS
-    CHROMIUM_EXECUTABLE = str(base_path / "playwright_browsers/chrome-mac/Chromium.app/Contents/MacOS/Chromium")
-else:
-    raise Exception(f"SO não suportado: {so}")
+def acessar_sicoobnet():
+    # REMOVIDO: CHROME_EXECUTABLE (usaremos o nativo do Playwright)
+    print("🚀 Iniciando CHROMIUM EMBUTIDO com permissão para extensões...")
 
-# 🔹 Função principal
-def enviar_mensagem():
-    print("🚀 Abrindo navegador com Playwright...")
     with sync_playwright() as p:
-        context = p.chromium.launch_persistent_context(
-            user_data_dir=str(USER_DATA_DIR),
-            headless=False,
-            executable_path=CHROMIUM_EXECUTABLE
-        )
-        page = context.new_page()
+        try:
+            args = [
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled",
+                "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+                "--enable-extensions", 
+            ]
 
-        print("🔹 Carregando WhatsApp Web...")
-        page.goto("https://web.whatsapp.com/")
-        page.wait_for_selector("div#app", timeout=0)
-        print("✅ WhatsApp carregado!")
+            if EXTENSION_PATH:
+                args += [
+                    f"--disable-extensions-except={EXTENSION_PATH}",
+                    f"--load-extension={EXTENSION_PATH}",
+                ]
 
-        print(f"🔹 Abrindo conversa do número {numero}...")
-        page.goto(f"https://web.whatsapp.com/send?phone={numero}")
-        caixa = page.locator("footer div[contenteditable='true']").first
-        caixa.wait_for(timeout=0)
+            # AJUSTE: Removido executable_path para usar o bundle do Playwright
+            context = p.chromium.launch_persistent_context(
+                user_data_dir=str(USER_DATA_DIR),
+                headless=HEADLESS,
+                # executable_path foi removido aqui
+                args=args,
+                # IMPORTANTE: Chromium embutido exige ignorar estas flags para permitir extensões
+                ignore_default_args=["--enable-automation", "--disable-extensions"], 
+                viewport={"width": 1366, "height": 768},
+                ignore_https_errors=True,
+                java_script_enabled=True,
+            )
 
-        print("🔹 Digitando mensagem...")
-        caixa.click()
-        caixa.type(mensagem, delay=50)
+            page = context.new_page()
 
-        print("🔹 Enviando mensagem...")
-        page.keyboard.press("Enter")
-        print("📩 Mensagem enviada!")
+            print("🔹 Abrindo SicoobNet...")
+            page.goto("https://www.sicoob.com.br/sicoobnet", timeout=120000, wait_until="domcontentloaded")
 
-        time.sleep(3)
-        print("✅ Processo concluído.")
+            if not HEADLESS:
+                print(f"\n⚠️ Verifique se a extensão do Sicoob está ativa no Chromium embutido.")
+                time.sleep(PAUSA_APOS_LOGIN)
 
-# 🔹 Executa
+            page.screenshot(path="sicoobnet_status.png")
+            
+            try:
+                page.wait_for_selector(
+                    "nav, [class*='menu'], div[class*='saldo'], .dashboard",
+                    timeout=45000
+                )
+                print("✅ Logado com sucesso no Chromium embutido!")
+            except PlaywrightTimeoutError:
+                print("⚠️ Dashboard não detectado.")
+
+            time.sleep(5)
+
+        except Exception as e:
+            print(f"❌ Erro: {str(e)}")
+        finally:
+            if 'context' in locals():
+                context.close()
+            print("🛑 Processo finalizado.")
+
 if __name__ == "__main__":
-    enviar_mensagem()
+    # Garanta que o chromium está instalado rodando no terminal: playwright install chromium
+    acessar_sicoobnet()
