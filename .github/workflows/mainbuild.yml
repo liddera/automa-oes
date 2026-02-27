@@ -24,7 +24,6 @@ jobs:
           $env:PLAYWRIGHT_BROWSERS_PATH = "0"
           playwright install chromium
 
-      # 🔎 Descobre automaticamente o caminho do Chromium instalado
       - name: Get Playwright Browser Path
         shell: powershell
         run: |
@@ -37,14 +36,16 @@ jobs:
         run: |
           pyinstaller --onefile `
             --windowed `
-            --name "BaixaLivros" `
+            --name "SicoobBot" `
             --add-data "$env:PW_PATH;playwright\driver\package\.local-browsers" `
             --collect-all playwright `
             --hidden-import playwright.sync_api `
             --hidden-import playwright._impl `
+            --paths "automacoes" `
             automacoes/main.py
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: BaixaLivros-EXE
-          path: dist/BaixaLivros.exe
+          name: SicoobBot-EXE
+          path: dist/SicoobBot.exe

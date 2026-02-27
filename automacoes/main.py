@@ -1,105 +1,40 @@
-import sys
-import os
-import time
-from pathlib import Path
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright
+from config import URL_SICOOB
+from browser_manager import iniciar_navegador
+import sicoob_actions as sicoob
 
-# 🔒 FORÇA USAR O CHROMIUM EMPACOTADO NO EXE
-os.environ["PLAYWRIGHT_BROWSERS_PATH"] = "0"
-
-# 📁 Base compatível com PyInstaller
-if getattr(sys, 'frozen', False):
-    base_path = Path(sys._MEIPASS)
-else:
-    base_path = Path(__file__).parent
-
-# 📁 Pasta persistente do perfil
-USER_DATA_DIR = base_path / "perfil_sicoobnet_persistente"
-USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-# 📦 Caminho da extensão (se usar)
-EXTENSION_PATH = None  # Ex: str(base_path / "extensao_sicoob")
-
-HEADLESS = False
-PAUSA_APOS_LOGIN = 180
-
-
-def acessar_sicoobnet():
-    print("🚀 Iniciando Chromium embutido...")
-
+def executar_bot():
+    print("🚀 Iniciando sistema...")
+    
     with sync_playwright() as p:
-        context = None
+        context, page = iniciar_navegador(p)
+        
         try:
-            args = [
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-blink-features=AutomationControlled",
-                "--start-maximized",
-                "--enable-extensions",
-                # 🔐 User-Agent compatível com Windows
-                "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-            ]
+            page.goto(URL_SICOOB, timeout=120000, wait_until="domcontentloaded")
 
-            if EXTENSION_PATH:
-                args += [
-                    f"--disable-extensions-except={EXTENSION_PATH}",
-                    f"--load-extension={EXTENSION_PATH}",
-                ]
+            if not sicoob.esperar_login(page):
+                print("❌ Tempo de login esgotado.")
+                return
 
-            context = p.chromium.launch_persistent_context(
-                user_data_dir=str(USER_DATA_DIR),
-                headless=HEADLESS,
-                args=args,
-                ignore_default_args=[
-                    "--enable-automation",
-                    "--disable-extensions"
-                ],
-                viewport=None,
-                ignore_https_errors=True,
-                java_script_enabled=True,
-            )
+            minhas_contas = sicoob.listar_contas(page)
 
-            page = context.new_page()
 
-            # 🔐 Remove navigator.webdriver
-            page.add_init_script("""
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-            """)
+            for conta in minhas_contas:
+                sicoob.acessar_extrato(page, conta)
+                
+                # Lógica de download ou leitura de dados entraria aqui
+                # Volta para a lista de contas
+                page.locator("a.texto-trocar-conta").click()
+                page.wait_for_selector("div.seletor-conta")
 
-            print("🔹 Abrindo SicoobNet...")
-            page.goto(
-                "https://www.sicoob.com.br/sicoobnet",
-                timeout=120000,
-                wait_until="domcontentloaded"
-            )
-
-            if not HEADLESS:
-                print("\n⚠️ Faça login manual se necessário...")
-                time.sleep(PAUSA_APOS_LOGIN)
-
-            page.screenshot(path="sicoobnet_status.png")
-
-            try:
-                page.wait_for_selector(
-                    "nav, [class*='menu'], div[class*='saldo'], .dashboard",
-                    timeout=45000
-                )
-                print("✅ Login detectado com sucesso!")
-            except PlaywrightTimeoutError:
-                print("⚠️ Dashboard não detectado.")
-
-            time.sleep(5)
-
+            print("\n🏁 Processo finalizado com sucesso.")
+            
+            
         except Exception as e:
-            print(f"❌ Erro: {str(e)}")
-
+            print(f"💥 Erro crítico: {e}")
         finally:
-            if context:
-                context.close()
-            print("🛑 Processo finalizado.")
-
+            input("Pressione ENTER para fechar o navegador...")
+            context.close()
 
 if __name__ == "__main__":
-    acessar_sicoobnet()
+    executar_bot()
