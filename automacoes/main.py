@@ -18,18 +18,15 @@ def executar_bot():
 
             minhas_contas = sicoob.listar_contas(page)
 
+            if not minhas_contas:
+                print("❌ Nenhuma conta encontrada.")
+                return
 
             for conta in minhas_contas:
                 sicoob.acessar_extrato(page, conta)
-                
-                # Lógica de download ou leitura de dados entraria aqui
-                # Volta para a lista de contas
-                page.locator("a.texto-trocar-conta").click()
-                page.wait_for_selector("div.seletor-conta")
 
-            print("\n🏁 Processo finalizado com sucesso.")
-            
-            
+            print("\n🏁 Processo finalizado com sucesso. Todos os extratos baixados.")
+
         except Exception as e:
             print(f"💥 Erro crítico: {e}")
         finally:
